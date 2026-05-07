@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import Script from 'next/script'
 import Navigation from '@/components/Navigation'
 
 export const metadata: Metadata = {
@@ -17,6 +18,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+      </head>
       <body className="bg-slate-50">
         <div className="min-h-screen flex flex-col">
           {/* Desktop header */}
