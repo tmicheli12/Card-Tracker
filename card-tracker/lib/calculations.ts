@@ -42,11 +42,11 @@ export function statusLabel(status: string): string {
 
 export function statusColor(status: string): string {
   const colors: Record<string, string> = {
-    owned:      'bg-blue-100 text-blue-700',
-    at_grader:  'bg-violet-100 text-violet-700',
-    graded:     'bg-emerald-100 text-emerald-700',
-    sold:       'bg-slate-100 text-slate-500',
-    collection: 'bg-amber-100 text-amber-700',
+    owned:      'bg-blue-900/50 text-blue-300',
+    at_grader:  'bg-violet-900/50 text-violet-300',
+    graded:     'bg-emerald-900/50 text-emerald-300',
+    sold:       'bg-zinc-800 text-zinc-400',
+    collection: 'bg-amber-900/50 text-amber-300',
   }
-  return colors[status] ?? 'bg-slate-100 text-slate-500'
+  return colors[status] ?? 'bg-zinc-800 text-zinc-400'
 }

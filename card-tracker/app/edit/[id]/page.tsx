@@ -1,22 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Sport, Strategy, Source } from '@/types/card'
 
 const SPORTS: Sport[] = ['Baseball', 'Basketball', 'Football', 'Hockey', 'Soccer', 'Other']
 const SOURCES: Source[] = ['Card Show', 'eBay', 'LCS', 'Private', 'Online', 'Other']
 
-const today = () => new Date().toISOString().split('T')[0]
-
-export default function AddCardPage() {
+export default function EditCardPage() {
   const router = useRouter()
+  const { id } = useParams<{ id: string }>()
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [notFound, setNotFound] = useState(false)
   const [showOptional, setShowOptional] = useState(false)
   const [strategy, setStrategy] = useState<Strategy>('flip')
-  const [submitPSA, setSubmitPSA] = useState(false)
 
   const [form, setForm] = useState({
     player: '',
@@ -27,11 +26,34 @@ export default function AddCardPage() {
     sport: 'Baseball' as Sport,
     purchase_price: '',
     purchase_fees: '',
-    purchase_date: today(),
+    purchase_date: '',
     source: '' as Source | '',
     notes: '',
     batch_name: '',
   })
+
+  useEffect(() => {
+    supabase.from('cards').select('*').eq('id', id).single().then(({ data, error }) => {
+      if (error || !data) { setNotFound(true); setLoading(false); return }
+      setStrategy(data.strategy)
+      setForm({
+        player: data.player ?? '',
+        year: data.year ? String(data.year) : '',
+        set_name: data.set_name ?? '',
+        card_number: data.card_number ?? '',
+        variant: data.variant ?? '',
+        sport: data.sport,
+        purchase_price: String(data.purchase_price),
+        purchase_fees: data.purchase_fees ? String(data.purchase_fees) : '',
+        purchase_date: data.purchase_date,
+        source: data.source ?? '',
+        notes: data.notes ?? '',
+        batch_name: (data as any).batch_name ?? '',
+      })
+      if (data.variant || data.purchase_fees || data.notes || (data as any).batch_name) setShowOptional(true)
+      setLoading(false)
+    })
+  }, [id])
 
   function set(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -40,11 +62,9 @@ export default function AddCardPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.player || !form.purchase_price || !form.purchase_date) return
-
     setSaving(true)
-    const status = strategy === 'grade' && submitPSA ? 'at_grader' : 'owned'
 
-    const { error } = await supabase.from('cards').insert({
+    const { error } = await supabase.from('cards').update({
       player: form.player.trim(),
       year: form.year ? parseInt(form.year) : null,
       set_name: form.set_name.trim() || null,
@@ -56,39 +76,29 @@ export default function AddCardPage() {
       purchase_date: form.purchase_date,
       source: form.source || null,
       strategy,
-      status,
-      submitted_date: strategy === 'grade' && submitPSA ? form.purchase_date : null,
       notes: form.notes.trim() || null,
       batch_name: form.batch_name.trim() || null,
-    })
+    }).eq('id', id)
 
     setSaving(false)
     if (!error) {
-      setSuccess(true)
-      setForm({ player: '', year: '', set_name: '', card_number: '', variant: '', sport: 'Baseball', purchase_price: '', purchase_fees: '', purchase_date: today(), source: '', notes: '', batch_name: '' })
-      setStrategy('flip')
-      setSubmitPSA(false)
-      setShowOptional(false)
-      setTimeout(() => setSuccess(false), 2500)
+      router.push('/inventory')
     } else {
       alert('Error saving card: ' + error.message)
     }
   }
 
+  if (loading) return <div className="text-center py-12 text-zinc-500">Loading...</div>
+  if (notFound) return <div className="text-center py-12 text-zinc-500">Card not found.</div>
+
   return (
     <div className="max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="page-title">Add Card</h1>
+        <h1 className="page-title">Edit Card</h1>
         <button onClick={() => router.push('/inventory')} className="btn-secondary text-xs px-3 py-2">
-          View Inventory
+          Cancel
         </button>
       </div>
-
-      {success && (
-        <div className="mb-4 rounded-lg bg-emerald-900/40 border border-emerald-700 p-3 text-emerald-300 font-medium text-center">
-          ✓ Card saved! Add another or view inventory.
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="card space-y-4">
 
@@ -128,7 +138,7 @@ export default function AddCardPage() {
           </div>
         </div>
 
-        {/* Variant (optional toggle) */}
+        {/* Optional fields */}
         {showOptional && (
           <>
             <div>
@@ -148,7 +158,7 @@ export default function AddCardPage() {
         <div>
           <label className="label">Purchase Price *</label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">$</span>
             <input className="input pl-7" type="number" inputMode="decimal" placeholder="0.00"
               min="0" step="0.01" value={form.purchase_price}
               onChange={e => set('purchase_price', e.target.value)} required />
@@ -160,7 +170,7 @@ export default function AddCardPage() {
           <div>
             <label className="label">Purchase Fees / Shipping</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">$</span>
               <input className="input pl-7" type="number" inputMode="decimal" placeholder="0.00"
                 min="0" step="0.01" value={form.purchase_fees}
                 onChange={e => set('purchase_fees', e.target.value)} />
@@ -196,7 +206,7 @@ export default function AddCardPage() {
         {/* Show/hide optional fields */}
         <button type="button" onClick={() => setShowOptional(!showOptional)}
           className="text-sm text-blue-400 font-medium hover:underline">
-          {showOptional ? '▲ Hide optional fields' : '▼ Show optional fields (variant, fees, notes)'}
+          {showOptional ? '▲ Hide optional fields' : '▼ Show optional fields (variant, fees, batch, notes)'}
         </button>
 
         {/* Strategy toggle */}
@@ -224,17 +234,8 @@ export default function AddCardPage() {
           </div>
         </div>
 
-        {/* Submit to PSA checkbox */}
-        {strategy === 'grade' && (
-          <label className="flex items-center gap-3 p-3 rounded-lg bg-violet-900/30 border border-violet-700 cursor-pointer">
-            <input type="checkbox" checked={submitPSA} onChange={e => setSubmitPSA(e.target.checked)}
-              className="w-5 h-5 accent-violet-500" />
-            <span className="text-sm font-medium text-violet-300">Submitting to PSA today</span>
-          </label>
-        )}
-
         <button type="submit" disabled={saving} className="btn-primary mt-2">
-          {saving ? 'Saving...' : '✓ Save Card'}
+          {saving ? 'Saving...' : '✓ Save Changes'}
         </button>
       </form>
     </div>

@@ -21,15 +21,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
       </head>
-      <body className="bg-slate-50">
+      <body className="bg-zinc-950 text-zinc-100">
         <div className="min-h-screen flex flex-col">
           {/* Desktop header */}
-          <header className="hidden md:flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+          <header className="hidden md:flex items-center justify-between px-6 py-3 bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 shadow-sm">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-sm">
                 🃏
               </div>
-              <span className="text-lg font-bold text-slate-900 tracking-tight">Card Tracker</span>
+              <span className="text-lg font-bold text-zinc-100 tracking-tight">Card Tracker</span>
             </div>
             <Navigation layout="horizontal" />
           </header>
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
 
           {/* Mobile bottom nav */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 z-50 safe-area-inset-bottom">
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur border-t border-zinc-800 z-50 safe-area-inset-bottom">
             <Navigation layout="mobile" />
           </nav>
         </div>

@@ -8,9 +8,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
-import { format, parseISO, startOfMonth } from 'date-fns'
+import { format, parseISO, startOfMonth, differenceInDays } from 'date-fns'
 
-const COLORS = ['#2563eb', '#16a34a', '#d97706', '#9333ea', '#ef4444', '#64748b']
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#64748b']
 
 export default function AnalyticsPage() {
   const [cards, setCards] = useState<Card[]>([])
@@ -31,7 +31,6 @@ export default function AnalyticsPage() {
   }, [])
 
   const soldCards = cards.filter(c => c.status === 'sold' && c.sale_price)
-  const activeCards = cards.filter(c => c.status !== 'sold')
 
   // Monthly P&L
   const monthlyData = soldCards.reduce<Record<string, number>>((acc, card) => {
@@ -56,11 +55,18 @@ export default function AnalyticsPage() {
     avgROI: parseFloat((d.total / d.count).toFixed(1)),
   }))
 
-  // Strategy comparison
+  // Strategy comparison with win rate and avg days
   const flipSold = soldCards.filter(c => c.strategy === 'flip')
   const gradeSold = soldCards.filter(c => c.strategy === 'grade')
-  const avg = (arr: Card[]) => arr.length ? arr.reduce((s, c) => s + roi(c, psaCost), 0) / arr.length : 0
-  const totalProfit = (arr: Card[]) => arr.reduce((s, c) => s + profit(c, psaCost), 0)
+  const totalProfitFn = (arr: Card[]) => arr.reduce((s, c) => s + profit(c, psaCost), 0)
+  const avgROIFn = (arr: Card[]) => arr.length ? arr.reduce((s, c) => s + roi(c, psaCost), 0) / arr.length : 0
+  const winRateFn = (arr: Card[]) => arr.length ? (arr.filter(c => profit(c, psaCost) > 0).length / arr.length) * 100 : 0
+  const avgDaysFn = (arr: Card[]) => {
+    const valid = arr.filter(c => c.purchase_date && c.sold_date)
+    if (!valid.length) return null
+    const avg = valid.reduce((s, c) => s + differenceInDays(new Date(c.sold_date!), new Date(c.purchase_date)), 0) / valid.length
+    return Math.round(avg)
+  }
 
   // Grade distribution
   const gradeDist = soldCards
@@ -89,22 +95,19 @@ export default function AnalyticsPage() {
   const best = rankedSold.slice(0, 3)
   const worst = rankedSold.slice(-3).reverse()
 
-  // Days to sell average
-  const daysToSell = soldCards
-    .filter(c => c.purchase_date && c.sold_date)
-    .map(c => {
-      const d = (new Date(c.sold_date!).getTime() - new Date(c.purchase_date).getTime()) / 86400000
-      return d
-    })
-  const avgDays = daysToSell.length ? (daysToSell.reduce((a, b) => a + b, 0) / daysToSell.length).toFixed(0) : 'N/A'
+  // Overall stats
+  const overallWinRate = soldCards.length
+    ? (soldCards.filter(c => profit(c, psaCost) > 0).length / soldCards.length) * 100
+    : 0
+  const avgDaysAll = avgDaysFn(soldCards)
 
-  if (loading) return <div className="text-center py-12 text-gray-500">Loading...</div>
+  if (loading) return <div className="text-center py-12 text-zinc-500">Loading...</div>
 
   if (soldCards.length === 0) {
     return (
       <div>
         <h1 className="page-title mb-4">Analytics</h1>
-        <div className="card text-center py-12 text-gray-500">
+        <div className="card text-center py-12 text-zinc-500">
           No sold cards yet. Analytics will appear once you record your first sale.
         </div>
       </div>
@@ -118,22 +121,26 @@ export default function AnalyticsPage() {
       {/* Summary row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="card text-center">
-          <div className="text-2xl font-bold text-green-600">{formatCurrency(totalProfit(soldCards))}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Total Profit</div>
+          <div className={`text-2xl font-bold ${totalProfitFn(soldCards) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {formatCurrency(totalProfitFn(soldCards))}
+          </div>
+          <div className="text-xs text-zinc-500 mt-0.5">Total Profit</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-blue-600">{soldCards.length}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Cards Sold</div>
+          <div className="text-2xl font-bold text-blue-400">{soldCards.length}</div>
+          <div className="text-xs text-zinc-500 mt-0.5">Cards Sold</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-purple-600">{avgDays}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Avg Days to Sell</div>
+          <div className={`text-2xl font-bold ${overallWinRate >= 50 ? 'text-emerald-400' : overallWinRate >= 30 ? 'text-amber-400' : 'text-red-400'}`}>
+            {overallWinRate.toFixed(0)}%
+          </div>
+          <div className="text-xs text-zinc-500 mt-0.5">Win Rate</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-orange-600">
+          <div className="text-2xl font-bold text-violet-400">
             {soldCards.length ? formatPercent(soldCards.reduce((s, c) => s + roi(c, psaCost), 0) / soldCards.length) : '—'}
           </div>
-          <div className="text-xs text-gray-500 mt-0.5">Avg ROI</div>
+          <div className="text-xs text-zinc-500 mt-0.5">Avg ROI</div>
         </div>
       </div>
 
@@ -141,15 +148,25 @@ export default function AnalyticsPage() {
       <div className="card">
         <h2 className="section-header mb-3">Flip vs Grade</h2>
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 rounded-lg p-3 text-center">
-            <div className="text-xs font-semibold text-blue-600 uppercase">Flip</div>
-            <div className="text-xl font-bold text-blue-700 mt-1">{formatCurrency(totalProfit(flipSold))}</div>
-            <div className="text-xs text-blue-600">{flipSold.length} sold · {formatPercent(avg(flipSold))} avg ROI</div>
+          <div className="bg-blue-900/30 border border-blue-900 rounded-lg p-3">
+            <div className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2">💰 Flip</div>
+            <div className="text-xl font-bold text-blue-300">{formatCurrency(totalProfitFn(flipSold))}</div>
+            <div className="mt-2 space-y-1 text-xs text-zinc-400">
+              <div>{flipSold.length} sold</div>
+              <div>Avg ROI: <span className={avgROIFn(flipSold) >= 0 ? 'text-emerald-400' : 'text-red-400'}>{formatPercent(avgROIFn(flipSold))}</span></div>
+              <div>Win Rate: <span className={winRateFn(flipSold) >= 50 ? 'text-emerald-400' : 'text-amber-400'}>{winRateFn(flipSold).toFixed(0)}%</span></div>
+              {avgDaysFn(flipSold) !== null && <div>Avg Days: {avgDaysFn(flipSold)}</div>}
+            </div>
           </div>
-          <div className="bg-purple-50 rounded-lg p-3 text-center">
-            <div className="text-xs font-semibold text-purple-600 uppercase">Grade</div>
-            <div className="text-xl font-bold text-purple-700 mt-1">{formatCurrency(totalProfit(gradeSold))}</div>
-            <div className="text-xs text-purple-600">{gradeSold.length} sold · {formatPercent(avg(gradeSold))} avg ROI</div>
+          <div className="bg-violet-900/30 border border-violet-900 rounded-lg p-3">
+            <div className="text-xs font-bold text-violet-400 uppercase tracking-wider mb-2">🏆 Grade</div>
+            <div className="text-xl font-bold text-violet-300">{formatCurrency(totalProfitFn(gradeSold))}</div>
+            <div className="mt-2 space-y-1 text-xs text-zinc-400">
+              <div>{gradeSold.length} sold</div>
+              <div>Avg ROI: <span className={avgROIFn(gradeSold) >= 0 ? 'text-emerald-400' : 'text-red-400'}>{formatPercent(avgROIFn(gradeSold))}</span></div>
+              <div>Win Rate: <span className={winRateFn(gradeSold) >= 50 ? 'text-emerald-400' : 'text-amber-400'}>{winRateFn(gradeSold).toFixed(0)}%</span></div>
+              {avgDaysFn(gradeSold) !== null && <div>Avg Days: {avgDaysFn(gradeSold)}</div>}
+            </div>
           </div>
         </div>
       </div>
@@ -160,14 +177,16 @@ export default function AnalyticsPage() {
           <h2 className="section-header mb-3">Monthly Profit / Loss</h2>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={monthlyChart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
-              <Tooltip formatter={(v: number) => formatCurrency(v)} />
-              <Bar dataKey="profit" radius={[4, 4, 0, 0]}
-                fill="#2563eb"
-                label={false}
+              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#71717a' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#71717a' }} tickFormatter={v => `$${v}`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 8 }}
+                labelStyle={{ color: '#a1a1aa' }}
+                itemStyle={{ color: '#e4e4e7' }}
+                formatter={(v: number) => formatCurrency(v)}
               />
+              <Bar dataKey="profit" radius={[4, 4, 0, 0]} fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -179,11 +198,16 @@ export default function AnalyticsPage() {
           <h2 className="section-header mb-3">Avg ROI by Sport</h2>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={sportChart} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `${v}%`} />
-              <YAxis dataKey="sport" type="category" tick={{ fontSize: 11 }} width={70} />
-              <Tooltip formatter={(v: number) => `${v}%`} />
-              <Bar dataKey="avgROI" radius={[0, 4, 4, 0]} fill="#16a34a" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#71717a' }} tickFormatter={v => `${v}%`} />
+              <YAxis dataKey="sport" type="category" tick={{ fontSize: 11, fill: '#71717a' }} width={70} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 8 }}
+                labelStyle={{ color: '#a1a1aa' }}
+                itemStyle={{ color: '#e4e4e7' }}
+                formatter={(v: number) => `${v}%`}
+              />
+              <Bar dataKey="avgROI" radius={[0, 4, 4, 0]} fill="#10b981" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -195,11 +219,16 @@ export default function AnalyticsPage() {
           <h2 className="section-header mb-3">Profit by Platform</h2>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={platformChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${formatCurrency(value)}`} labelLine={false}>
+              <Pie data={platformChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
+                label={({ name, value }) => `${name}: ${formatCurrency(value)}`} labelLine={false}>
                 {platformChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
-              <Legend />
-              <Tooltip formatter={(v: number) => formatCurrency(v)} />
+              <Legend wrapperStyle={{ color: '#a1a1aa', fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 8 }}
+                itemStyle={{ color: '#e4e4e7' }}
+                formatter={(v: number) => formatCurrency(v)}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -211,9 +240,9 @@ export default function AnalyticsPage() {
           <h2 className="section-header mb-3">PSA Grade Distribution (Sold)</h2>
           <div className="flex gap-2 flex-wrap">
             {gradeChart.map(({ grade, count }) => (
-              <div key={grade} className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-center">
-                <div className="font-bold text-green-800">{grade}</div>
-                <div className="text-xs text-green-600">{count} card{count > 1 ? 's' : ''}</div>
+              <div key={grade} className="bg-emerald-900/30 border border-emerald-800 rounded-lg px-3 py-2 text-center">
+                <div className="font-bold text-emerald-300">{grade}</div>
+                <div className="text-xs text-emerald-500">{count} card{count > 1 ? 's' : ''}</div>
               </div>
             ))}
           </div>
@@ -227,8 +256,8 @@ export default function AnalyticsPage() {
           <div className="space-y-2">
             {best.map(card => (
               <div key={card.id} className="flex justify-between text-sm">
-                <span className="text-gray-700 truncate mr-2">{card.player}</span>
-                <span className="font-semibold text-green-600 shrink-0">{formatPercent(roi(card, psaCost))}</span>
+                <span className="text-zinc-400 truncate mr-2">{card.player}</span>
+                <span className="font-semibold text-emerald-400 shrink-0">{formatPercent(roi(card, psaCost))}</span>
               </div>
             ))}
           </div>
@@ -238,8 +267,8 @@ export default function AnalyticsPage() {
           <div className="space-y-2">
             {worst.map(card => (
               <div key={card.id} className="flex justify-between text-sm">
-                <span className="text-gray-700 truncate mr-2">{card.player}</span>
-                <span className="font-semibold text-red-500 shrink-0">{formatPercent(roi(card, psaCost))}</span>
+                <span className="text-zinc-400 truncate mr-2">{card.player}</span>
+                <span className="font-semibold text-red-400 shrink-0">{formatPercent(roi(card, psaCost))}</span>
               </div>
             ))}
           </div>

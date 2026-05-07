@@ -22,7 +22,7 @@ export default function Navigation({ layout }: { layout: 'mobile' | 'horizontal'
           return (
             <Link key={href} href={href}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
-                active ? 'text-blue-600' : 'text-slate-400'
+                active ? 'text-blue-400' : 'text-zinc-500'
               }`}>
               <span className={`text-xl leading-none transition-transform ${active ? 'scale-110' : ''}`}>{icon}</span>
               <span>{label}</span>
@@ -42,7 +42,7 @@ export default function Navigation({ layout }: { layout: 'mobile' | 'horizontal'
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${
               active
                 ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-zinc-400 hover:bg-zinc-800'
             }`}>
             <span>{icon}</span>
             <span>{label}</span>
@@ -51,7 +51,7 @@ export default function Navigation({ layout }: { layout: 'mobile' | 'horizontal'
       })}
       <Link href="/settings"
         className={`ml-1 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${
-          pathname === '/settings' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+          pathname === '/settings' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:bg-zinc-800'
         }`}>
         ⚙️ Settings
       </Link>

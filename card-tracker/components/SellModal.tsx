@@ -61,24 +61,24 @@ export default function SellModal({ card, psaCost, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4">
+      <div className="bg-zinc-900 w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 border border-zinc-800">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Mark as Sold</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+          <h2 className="text-lg font-bold text-zinc-100">Mark as Sold</h2>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-2xl leading-none">&times;</button>
         </div>
 
-        <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-          <div className="font-semibold text-gray-900">{card.player}</div>
+        <div className="text-sm text-zinc-400 bg-zinc-800 rounded-lg p-3">
+          <div className="font-semibold text-zinc-100">{card.player}</div>
           {card.year && <span className="mr-2">{card.year}</span>}
           {card.set_name && <span>{card.set_name}</span>}
-          <div className="mt-1">Cost basis: <span className="font-semibold">{formatCurrency(cost)}</span></div>
+          <div className="mt-1">Cost basis: <span className="font-semibold text-zinc-200">{formatCurrency(cost)}</span></div>
         </div>
 
         <form onSubmit={handleSell} className="space-y-3">
           <div>
             <label className="label">Sale Price *</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
               <input className="input pl-7" type="number" inputMode="decimal" placeholder="0.00"
                 min="0" step="0.01" value={form.sale_price}
                 onChange={e => set('sale_price', e.target.value)} required autoFocus />
@@ -104,7 +104,7 @@ export default function SellModal({ card, psaCost, onClose, onSaved }: Props) {
             <div>
               <label className="label">Fees</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
                 <input className="input pl-7" type="number" inputMode="decimal" placeholder="0.00"
                   min="0" step="0.01" value={form.sale_fees}
                   onChange={e => set('sale_fees', e.target.value)} />
@@ -113,7 +113,7 @@ export default function SellModal({ card, psaCost, onClose, onSaved }: Props) {
             <div>
               <label className="label">Shipping</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
                 <input className="input pl-7" type="number" inputMode="decimal" placeholder="0.00"
                   min="0" step="0.01" value={form.sale_shipping}
                   onChange={e => set('sale_shipping', e.target.value)} />
@@ -124,7 +124,7 @@ export default function SellModal({ card, psaCost, onClose, onSaved }: Props) {
           {/* Profit preview */}
           {salePrice > 0 && (
             <div className={`rounded-lg p-3 text-center font-semibold ${
-              profitPreview >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              profitPreview >= 0 ? 'bg-emerald-900/40 text-emerald-400' : 'bg-red-900/40 text-red-400'
             }`}>
               {profitPreview >= 0 ? '↑' : '↓'} Profit: {formatCurrency(profitPreview)}
               <span className="ml-2 text-sm font-normal opacity-75">

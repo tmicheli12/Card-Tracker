@@ -27,6 +27,7 @@ export interface Card {
   platform: SalePlatform | null
   sold_date: string | null
   notes: string | null
+  batch_name: string | null
   created_at: string
   updated_at: string
 }

@@ -40,14 +40,14 @@ export default function GradeModal({ card, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-5 space-y-4">
+      <div className="bg-zinc-900 w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-5 space-y-4 border border-zinc-800">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Enter PSA Grade</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+          <h2 className="text-lg font-bold text-zinc-100">Enter PSA Grade</h2>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-2xl leading-none">&times;</button>
         </div>
 
-        <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-          <div className="font-semibold text-gray-900">{card.player}</div>
+        <div className="text-sm text-zinc-400 bg-zinc-800 rounded-lg p-3">
+          <div className="font-semibold text-zinc-100">{card.player}</div>
           {card.year && <span>{card.year} </span>}
           {card.set_name && <span>{card.set_name}</span>}
         </div>
@@ -73,9 +73,9 @@ export default function GradeModal({ card, onClose, onSaved }: Props) {
 
           {grade && grade !== 'Auth' && (
             <div className={`rounded-lg p-3 text-center font-bold text-2xl ${
-              parseFloat(grade) >= 9 ? 'bg-green-50 text-green-700' :
-              parseFloat(grade) >= 7 ? 'bg-yellow-50 text-yellow-700' :
-              'bg-red-50 text-red-700'
+              parseFloat(grade) >= 9 ? 'bg-emerald-900/40 text-emerald-400' :
+              parseFloat(grade) >= 7 ? 'bg-yellow-900/40 text-yellow-400' :
+              'bg-red-900/40 text-red-400'
             }`}>
               PSA {grade}
             </div>
