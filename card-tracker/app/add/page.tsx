@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Sport, Strategy, Source } from '@/types/card'
+import { Sport, Source } from '@/types/card'
 
 const SPORTS: Sport[] = ['Baseball', 'Basketball', 'Football', 'Hockey', 'Soccer', 'Other']
 const SOURCES: Source[] = ['Card Show', 'eBay', 'LCS', 'Private', 'Online', 'Other']
@@ -15,8 +15,6 @@ export default function AddCardPage() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [showOptional, setShowOptional] = useState(false)
-  const [strategy, setStrategy] = useState<Strategy>('flip')
-  const [submitPSA, setSubmitPSA] = useState(false)
 
   const [form, setForm] = useState({
     player: '',
@@ -42,7 +40,6 @@ export default function AddCardPage() {
     if (!form.player || !form.purchase_price || !form.purchase_date) return
 
     setSaving(true)
-    const status = strategy === 'grade' && submitPSA ? 'at_grader' : 'owned'
 
     const { error } = await supabase.from('cards').insert({
       player: form.player.trim(),
@@ -55,9 +52,8 @@ export default function AddCardPage() {
       purchase_fees: form.purchase_fees ? parseFloat(form.purchase_fees) : 0,
       purchase_date: form.purchase_date,
       source: form.source || null,
-      strategy,
-      status,
-      submitted_date: strategy === 'grade' && submitPSA ? form.purchase_date : null,
+      strategy: 'flip',
+      status: 'owned',
       notes: form.notes.trim() || null,
       batch_name: form.batch_name.trim() || null,
     })
@@ -66,8 +62,6 @@ export default function AddCardPage() {
     if (!error) {
       setSuccess(true)
       setForm({ player: '', year: '', set_name: '', card_number: '', variant: '', sport: 'Baseball', purchase_price: '', purchase_fees: '', purchase_date: today(), source: '', notes: '', batch_name: '' })
-      setStrategy('flip')
-      setSubmitPSA(false)
       setShowOptional(false)
       setTimeout(() => setSuccess(false), 2500)
     } else {
@@ -128,7 +122,7 @@ export default function AddCardPage() {
           </div>
         </div>
 
-        {/* Variant (optional toggle) */}
+        {/* Optional fields */}
         {showOptional && (
           <>
             <div>
@@ -148,7 +142,7 @@ export default function AddCardPage() {
         <div>
           <label className="label">Purchase Price *</label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">$</span>
             <input className="input pl-7" type="number" inputMode="decimal" placeholder="0.00"
               min="0" step="0.01" value={form.purchase_price}
               onChange={e => set('purchase_price', e.target.value)} required />
@@ -160,7 +154,7 @@ export default function AddCardPage() {
           <div>
             <label className="label">Purchase Fees / Shipping</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">$</span>
               <input className="input pl-7" type="number" inputMode="decimal" placeholder="0.00"
                 min="0" step="0.01" value={form.purchase_fees}
                 onChange={e => set('purchase_fees', e.target.value)} />
@@ -196,42 +190,8 @@ export default function AddCardPage() {
         {/* Show/hide optional fields */}
         <button type="button" onClick={() => setShowOptional(!showOptional)}
           className="text-sm text-blue-400 font-medium hover:underline">
-          {showOptional ? '▲ Hide optional fields' : '▼ Show optional fields (variant, fees, notes)'}
+          {showOptional ? '▲ Hide optional fields' : '▼ Show optional fields (variant, fees, batch, notes)'}
         </button>
-
-        {/* Strategy toggle */}
-        <div>
-          <label className="label">Strategy *</label>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button"
-              onClick={() => setStrategy('flip')}
-              className={`py-3 rounded-lg font-semibold text-sm border-2 transition-all ${
-                strategy === 'flip'
-                  ? 'border-blue-600 bg-blue-600 text-white'
-                  : 'border-zinc-700 text-zinc-400 hover:border-blue-500'
-              }`}>
-              💰 Flip
-            </button>
-            <button type="button"
-              onClick={() => setStrategy('grade')}
-              className={`py-3 rounded-lg font-semibold text-sm border-2 transition-all ${
-                strategy === 'grade'
-                  ? 'border-violet-600 bg-violet-600 text-white'
-                  : 'border-zinc-700 text-zinc-400 hover:border-violet-500'
-              }`}>
-              🏆 Grade
-            </button>
-          </div>
-        </div>
-
-        {/* Submit to PSA checkbox */}
-        {strategy === 'grade' && (
-          <label className="flex items-center gap-3 p-3 rounded-lg bg-violet-900/30 border border-violet-700 cursor-pointer">
-            <input type="checkbox" checked={submitPSA} onChange={e => setSubmitPSA(e.target.checked)}
-              className="w-5 h-5 accent-violet-500" />
-            <span className="text-sm font-medium text-violet-300">Submitting to PSA today</span>
-          </label>
-        )}
 
         <button type="submit" disabled={saving} className="btn-primary mt-2">
           {saving ? 'Saving...' : '✓ Save Card'}

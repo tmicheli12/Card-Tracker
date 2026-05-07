@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Sport, Strategy, Source } from '@/types/card'
+import { Sport, Source } from '@/types/card'
 
 const SPORTS: Sport[] = ['Baseball', 'Basketball', 'Football', 'Hockey', 'Soccer', 'Other']
 const SOURCES: Source[] = ['Card Show', 'eBay', 'LCS', 'Private', 'Online', 'Other']
@@ -15,7 +15,6 @@ export default function EditCardPage() {
   const [saving, setSaving] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [showOptional, setShowOptional] = useState(false)
-  const [strategy, setStrategy] = useState<Strategy>('flip')
 
   const [form, setForm] = useState({
     player: '',
@@ -35,7 +34,6 @@ export default function EditCardPage() {
   useEffect(() => {
     supabase.from('cards').select('*').eq('id', id).single().then(({ data, error }) => {
       if (error || !data) { setNotFound(true); setLoading(false); return }
-      setStrategy(data.strategy)
       setForm({
         player: data.player ?? '',
         year: data.year ? String(data.year) : '',
@@ -75,7 +73,6 @@ export default function EditCardPage() {
       purchase_fees: form.purchase_fees ? parseFloat(form.purchase_fees) : 0,
       purchase_date: form.purchase_date,
       source: form.source || null,
-      strategy,
       notes: form.notes.trim() || null,
       batch_name: form.batch_name.trim() || null,
     }).eq('id', id)
@@ -208,31 +205,6 @@ export default function EditCardPage() {
           className="text-sm text-blue-400 font-medium hover:underline">
           {showOptional ? '▲ Hide optional fields' : '▼ Show optional fields (variant, fees, batch, notes)'}
         </button>
-
-        {/* Strategy toggle */}
-        <div>
-          <label className="label">Strategy *</label>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button"
-              onClick={() => setStrategy('flip')}
-              className={`py-3 rounded-lg font-semibold text-sm border-2 transition-all ${
-                strategy === 'flip'
-                  ? 'border-blue-600 bg-blue-600 text-white'
-                  : 'border-zinc-700 text-zinc-400 hover:border-blue-500'
-              }`}>
-              💰 Flip
-            </button>
-            <button type="button"
-              onClick={() => setStrategy('grade')}
-              className={`py-3 rounded-lg font-semibold text-sm border-2 transition-all ${
-                strategy === 'grade'
-                  ? 'border-violet-600 bg-violet-600 text-white'
-                  : 'border-zinc-700 text-zinc-400 hover:border-violet-500'
-              }`}>
-              🏆 Grade
-            </button>
-          </div>
-        </div>
 
         <button type="submit" disabled={saving} className="btn-primary mt-2">
           {saving ? 'Saving...' : '✓ Save Changes'}
