@@ -330,14 +330,15 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-xs text-zinc-500 mt-0.5">
                     {format(parseISO(card.purchase_date), 'MMM d, yyyy')} · {formatCurrency(totalCost(card, psaCost))} in
+                    {isSold && card.sale_price ? <> · <span className="text-zinc-400">{formatCurrency(card.sale_price)} sold</span></> : null}
                   </p>
                 </div>
-                {cardProfit !== null && cardROI !== null && (
+                {cardProfit !== null && (
                   <div className="text-right shrink-0">
                     <p className={`text-sm font-bold ${cardProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {formatCurrency(cardProfit)}
                     </p>
-                    <p className={`text-xs font-semibold ${cardROI >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <p className={`text-xs font-semibold ${(cardROI ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                       {formatPercent(cardROI)}
                     </p>
                   </div>
