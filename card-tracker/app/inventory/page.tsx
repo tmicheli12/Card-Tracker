@@ -203,6 +203,9 @@ export default function InventoryPage() {
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-sm flex-wrap">
                       <span className="text-zinc-400">Cost: <strong className="text-zinc-200">{formatCurrency(cost)}</strong></span>
+                      {isSold && card.sale_price && (
+                        <span className="text-zinc-400">Sold: <strong className="text-zinc-200">{formatCurrency(card.sale_price)}</strong></span>
+                      )}
                       {isSold && cardProfit !== null && (
                         <>
                           <span className={cardProfit >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
