@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Sport, Source } from '@/types/card'
 
 const SPORTS: Sport[] = ['Baseball', 'Basketball', 'Football', 'Hockey', 'Soccer', 'Other']
-const SOURCES: Source[] = ['Card Show', 'eBay', 'LCS', 'Private', 'Online', 'Other']
+const SOURCES: Source[] = ['Card Show', 'eBay', 'LCS', 'Private', 'Online', 'Whatnot', 'Other']
 
 const today = () => new Date().toISOString().split('T')[0]
 

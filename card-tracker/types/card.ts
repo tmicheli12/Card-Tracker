@@ -1,7 +1,7 @@
 export type Sport = 'Baseball' | 'Basketball' | 'Football' | 'Hockey' | 'Soccer' | 'Other'
 export type Strategy = 'flip' | 'grade'
 export type CardStatus = 'owned' | 'at_grader' | 'graded' | 'sold' | 'collection'
-export type Source = 'Card Show' | 'eBay' | 'LCS' | 'Private' | 'Online' | 'Other'
+export type Source = 'Card Show' | 'eBay' | 'LCS' | 'Private' | 'Online' | 'Whatnot' | 'Other'
 export type SalePlatform = 'eBay' | 'PWCC' | 'Whatnot' | 'Private' | 'Instagram' | 'Facebook' | 'Other'
 
 export interface Card {
