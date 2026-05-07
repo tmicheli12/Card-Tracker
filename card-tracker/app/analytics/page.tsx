@@ -41,7 +41,10 @@ export default function AnalyticsPage() {
   const flipSold = soldCards.filter(c => c.strategy === 'flip')
   const gradeSold = soldCards.filter(c => c.strategy === 'grade')
   const totalProfitFn = (arr: Card[]) => arr.reduce((s, c) => s + profit(c, psaCost), 0)
-  const avgROIFn = (arr: Card[]) => arr.length ? arr.reduce((s, c) => s + roi(c, psaCost), 0) / arr.length : 0
+  const avgROIFn = (arr: Card[]): number | null => {
+    const vals = arr.map(c => roi(c, psaCost)).filter((r): r is number => r !== null)
+    return vals.length ? vals.reduce((s, r) => s + r, 0) / vals.length : null
+  }
   const winRateFn = (arr: Card[]) => arr.length ? (arr.filter(c => profit(c, psaCost) > 0).length / arr.length) * 100 : 0
   const avgDaysFn = (arr: Card[]) => {
     const valid = arr.filter(c => c.purchase_date && c.sold_date)
@@ -83,8 +86,10 @@ export default function AnalyticsPage() {
 
   // ── ROI by sport ──────────────────────────────────────────────────────────
   const bySport = soldCards.reduce<Record<string, { total: number; count: number }>>((acc, card) => {
+    const r = roi(card, psaCost)
+    if (r === null) return acc
     if (!acc[card.sport]) acc[card.sport] = { total: 0, count: 0 }
-    acc[card.sport].total += roi(card, psaCost)
+    acc[card.sport].total += r
     acc[card.sport].count += 1
     return acc
   }, {})
@@ -93,17 +98,18 @@ export default function AnalyticsPage() {
   }))
 
   // ── Best source by ROI ────────────────────────────────────────────────────
-  const bySource = soldCards.reduce<Record<string, { totalROI: number; totalProfit: number; count: number }>>((acc, card) => {
+  const bySource = soldCards.reduce<Record<string, { totalROI: number; roiCount: number; totalProfit: number; count: number }>>((acc, card) => {
     const src = card.source ?? 'Unknown'
-    if (!acc[src]) acc[src] = { totalROI: 0, totalProfit: 0, count: 0 }
-    acc[src].totalROI += roi(card, psaCost)
+    const r = roi(card, psaCost)
+    if (!acc[src]) acc[src] = { totalROI: 0, roiCount: 0, totalProfit: 0, count: 0 }
+    if (r !== null) { acc[src].totalROI += r; acc[src].roiCount += 1 }
     acc[src].totalProfit += profit(card, psaCost)
     acc[src].count += 1
     return acc
   }, {})
   const sourceRows = Object.entries(bySource)
-    .map(([source, d]) => ({ source, avgROI: d.totalROI / d.count, totalProfit: d.totalProfit, count: d.count }))
-    .sort((a, b) => b.avgROI - a.avgROI)
+    .map(([source, d]) => ({ source, avgROI: d.roiCount ? d.totalROI / d.roiCount : null, totalProfit: d.totalProfit, count: d.count }))
+    .sort((a, b) => (b.avgROI ?? -Infinity) - (a.avgROI ?? -Infinity))
 
   // ── Loss analysis ─────────────────────────────────────────────────────────
   const losers = soldCards.filter(c => profit(c, psaCost) < 0)
@@ -134,7 +140,7 @@ export default function AnalyticsPage() {
     .map(([grade, count]) => ({ grade: `PSA ${grade}`, count }))
 
   // ── Best & worst ──────────────────────────────────────────────────────────
-  const rankedSold = [...soldCards].sort((a, b) => roi(b, psaCost) - roi(a, psaCost))
+  const rankedSold = [...soldCards].sort((a, b) => (roi(b, psaCost) ?? -Infinity) - (roi(a, psaCost) ?? -Infinity))
   const best = rankedSold.slice(0, 3)
   const worst = rankedSold.slice(-3).reverse()
 
@@ -179,7 +185,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="card text-center">
           <div className="text-2xl font-bold text-violet-400">
-            {soldCards.length ? formatPercent(soldCards.reduce((s, c) => s + roi(c, psaCost), 0) / soldCards.length) : '—'}
+            {formatPercent(avgROIFn(soldCards))}
           </div>
           <div className="text-xs text-zinc-500 mt-0.5">Avg ROI</div>
         </div>
@@ -198,7 +204,7 @@ export default function AnalyticsPage() {
               <div className={`text-xl font-bold ${val}`}>{formatCurrency(totalProfitFn(arr))}</div>
               <div className="mt-2 space-y-1 text-xs text-zinc-400">
                 <div>{arr.length} sold</div>
-                <div>Avg ROI: <span className={avgROIFn(arr) >= 0 ? 'text-emerald-400' : 'text-red-400'}>{formatPercent(avgROIFn(arr))}</span></div>
+                <div>Avg ROI: <span className={(avgROIFn(arr) ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}>{formatPercent(avgROIFn(arr))}</span></div>
                 <div>Win Rate: <span className={winRateFn(arr) >= 50 ? 'text-emerald-400' : 'text-amber-400'}>{winRateFn(arr).toFixed(0)}%</span></div>
                 {avgDaysFn(arr) !== null && <div>Avg Days: {avgDaysFn(arr)}</div>}
               </div>
@@ -255,12 +261,12 @@ export default function AnalyticsPage() {
                 <div className="w-20 text-xs text-zinc-400 shrink-0">{source}</div>
                 <div className="flex-1 bg-zinc-800 rounded-full h-2 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${avgROI >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
-                    style={{ width: `${Math.min(Math.abs(avgROI) / 1.5, 100)}%` }}
+                    className={`h-full rounded-full ${(avgROI ?? 0) >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
+                    style={{ width: avgROI !== null ? `${Math.min(Math.abs(avgROI) / 1.5, 100)}%` : '0%' }}
                   />
                 </div>
                 <div className="text-right shrink-0 min-w-[80px]">
-                  <span className={`text-sm font-bold ${avgROI >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <span className={`text-sm font-bold ${(avgROI ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {formatPercent(avgROI)}
                   </span>
                   <span className="text-xs text-zinc-600 ml-1.5">({count})</span>

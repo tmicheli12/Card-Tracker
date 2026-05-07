@@ -42,7 +42,8 @@ export default function DashboardPage() {
   const totalProfit      = soldCards.reduce((s, c) => s + profit(c, psaCost), 0)
   const totalEverSpent   = cards.reduce((s, c) => s + c.purchase_price + (c.purchase_fees ?? 0), 0)
   const allTimeROC       = totalEverSpent > 0 ? (totalProfit / totalEverSpent) * 100 : 0
-  const overallROI       = soldCards.length ? soldCards.reduce((s, c) => s + roi(c, psaCost), 0) / soldCards.length : 0
+  const roiVals          = soldCards.map(c => roi(c, psaCost)).filter((r): r is number => r !== null)
+  const overallROI       = roiVals.length ? roiVals.reduce((s, r) => s + r, 0) / roiVals.length : null
   const winRate          = soldCards.length ? (soldCards.filter(c => profit(c, psaCost) > 0).length / soldCards.length) * 100 : 0
 
   // This month
@@ -139,7 +140,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-zinc-600 text-xs uppercase tracking-wider">Avg ROI</p>
-                    <p className={`text-lg font-bold ${overallROI >= 0 ? 'text-zinc-300' : 'text-red-400'}`}>
+                    <p className={`text-lg font-bold ${(overallROI ?? 0) >= 0 ? 'text-zinc-300' : 'text-red-400'}`}>
                       {formatPercent(overallROI)}
                     </p>
                   </div>

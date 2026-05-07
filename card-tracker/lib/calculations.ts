@@ -15,9 +15,9 @@ export function profit(card: Card, psaCost: number): number {
   return netSale(card) - totalCost(card, psaCost)
 }
 
-export function roi(card: Card, psaCost: number): number {
+export function roi(card: Card, psaCost: number): number | null {
   const cost = totalCost(card, psaCost)
-  if (cost === 0) return 0
+  if (cost === 0) return null
   return (profit(card, psaCost) / cost) * 100
 }
 
@@ -25,7 +25,8 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
 }
 
-export function formatPercent(value: number): string {
+export function formatPercent(value: number | null): string {
+  if (value === null) return '—'
   return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
 }
 
