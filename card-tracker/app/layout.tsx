@@ -26,8 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Desktop header */}
           <header className="hidden md:flex items-center justify-between px-6 py-3 bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-sm">
-                🃏
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm" style={{background: 'linear-gradient(135deg, #2563eb, #7c3aed)'}}>
+                TM
               </div>
               <span className="text-lg font-bold text-zinc-100 tracking-tight">Card Tracker</span>
             </div>

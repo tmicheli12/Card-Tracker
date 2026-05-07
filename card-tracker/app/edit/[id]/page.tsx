@@ -137,18 +137,11 @@ export default function EditCardPage() {
 
         {/* Optional fields */}
         {showOptional && (
-          <>
-            <div>
-              <label className="label">Variant / Parallel</label>
-              <input className="input" type="text" placeholder="Refractor, Auto, /99..." value={form.variant}
-                onChange={e => set('variant', e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Batch Name</label>
-              <input className="input" type="text" placeholder="May 2025 Submission" value={form.batch_name}
-                onChange={e => set('batch_name', e.target.value)} />
-            </div>
-          </>
+          <div>
+            <label className="label">Variant / Parallel</label>
+            <input className="input" type="text" placeholder="Refractor, Auto, /99..." value={form.variant}
+              onChange={e => set('variant', e.target.value)} />
+          </div>
         )}
 
         {/* Purchase Price */}
