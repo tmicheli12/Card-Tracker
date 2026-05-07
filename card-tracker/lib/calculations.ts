@@ -31,10 +31,10 @@ export function formatPercent(value: number): string {
 
 export function statusLabel(status: string): string {
   const labels: Record<string, string> = {
-    owned: 'Owned',
-    at_grader: 'At PSA',
-    graded: 'Graded',
-    sold: 'Sold',
+    owned:      'Owned',
+    at_grader:  'At PSA',
+    graded:     'Graded',
+    sold:       'Sold',
     collection: 'Collection',
   }
   return labels[status] ?? status
@@ -42,11 +42,11 @@ export function statusLabel(status: string): string {
 
 export function statusColor(status: string): string {
   const colors: Record<string, string> = {
-    owned: 'bg-blue-100 text-blue-800',
-    at_grader: 'bg-purple-100 text-purple-800',
-    graded: 'bg-green-100 text-green-800',
-    sold: 'bg-gray-100 text-gray-600',
-    collection: 'bg-amber-100 text-amber-800',
+    owned:      'bg-blue-100 text-blue-700',
+    at_grader:  'bg-violet-100 text-violet-700',
+    graded:     'bg-emerald-100 text-emerald-700',
+    sold:       'bg-slate-100 text-slate-500',
+    collection: 'bg-amber-100 text-amber-700',
   }
-  return colors[status] ?? 'bg-gray-100 text-gray-600'
+  return colors[status] ?? 'bg-slate-100 text-slate-500'
 }

@@ -4,36 +4,49 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-slate-50 text-slate-900 antialiased;
   }
 }
 
 @layer components {
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400
+      focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all;
   }
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-semibold text-slate-600 mb-1.5;
   }
   .btn-primary {
-    @apply w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors;
+    @apply w-full rounded-xl bg-blue-600 px-4 py-3.5 text-base font-semibold text-white
+      hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300
+      focus:ring-offset-1 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed;
   }
   .btn-secondary {
-    @apply rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 focus:outline-none transition-colors;
+    @apply rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600
+      hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 focus:outline-none transition-all;
   }
   .btn-success {
-    @apply rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 focus:outline-none transition-colors;
+    @apply rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white
+      hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none transition-all shadow-sm;
   }
   .btn-danger {
-    @apply rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 focus:outline-none transition-colors;
+    @apply rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white
+      hover:bg-red-600 focus:outline-none transition-all;
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
+    @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-5;
+  }
+  .card-hover {
+    @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-5
+      hover:shadow-md hover:border-slate-200 transition-all cursor-pointer;
   }
   .page-title {
-    @apply text-xl font-bold text-gray-900;
+    @apply text-2xl font-bold text-slate-900 tracking-tight;
   }
   .section-header {
-    @apply text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2;
+    @apply text-xs font-bold text-slate-400 uppercase tracking-widest mb-3;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
   }
 }
