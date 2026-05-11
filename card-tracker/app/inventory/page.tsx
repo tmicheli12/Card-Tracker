@@ -32,8 +32,6 @@ export default function InventoryPage() {
   const [sellCard, setSellCard] = useState<Card | null>(null)
   const [gradeCard, setGradeCard] = useState<Card | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [compingId, setCompingId] = useState<string | null>(null)
-  const [compingAll, setCompingAll] = useState(false)
 
   const loadData = useCallback(async () => {
     const [{ data: cardsData }, { data: settingsData }] = await Promise.all([
@@ -62,51 +60,13 @@ export default function InventoryPage() {
     loadData()
   }
 
-  async function compCard(card: Card) {
-    setCompingId(card.id)
-    try {
-      const res = await fetch('/api/comp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, player: card.player, year: card.year, sport: card.sport }),
-      })
-      if (res.ok) loadData()
-      else {
-        const err = await res.json()
-        alert(`Comp failed: ${err.error}${err.detail ? '\n\n' + err.detail : ''}`)
-      }
-    } catch {
-      alert('Comp request failed — check your connection.')
-    }
-    setCompingId(null)
-  }
-
-  async function compAll() {
-    const targets = cards.filter(c => c.status === 'owned' || c.status === 'graded')
-    if (!targets.length) return
-    setCompingAll(true)
-    for (const card of targets) {
-      setCompingId(card.id)
-      await fetch('/api/comp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, player: card.player, year: card.year, sport: card.sport }),
-      })
-      // small delay to avoid rate limiting
-      await new Promise(r => setTimeout(r, 500))
-    }
-    setCompingId(null)
-    setCompingAll(false)
-    loadData()
-  }
-
   function exportCSV() {
     const headers = [
       'Player','Year','Set','Card #','Variant','Sport','Strategy','Status',
       'Purchase Date','Purchase Price','Purchase Fees','Total Cost',
       'PSA Grade','Submitted Date','Returned Date',
       'Sale Price','Sale Fees','Sale Shipping','Net Sale','Profit','ROI %',
-      'Batch','Source','Notes'
+      'Source','Notes'
     ]
     const rows = filtered.map(c => {
       const cost = totalCost(c, psaCost)
@@ -120,7 +80,7 @@ export default function InventoryPage() {
         c.psa_grade ?? '', c.submitted_date ?? '', c.returned_date ?? '',
         c.sale_price?.toFixed(2) ?? '', (c.sale_fees ?? 0).toFixed(2), (c.sale_shipping ?? 0).toFixed(2),
         netSale !== '' ? Number(netSale).toFixed(2) : '', cardProfit, cardROI,
-        (c as any).batch_name ?? '', c.source ?? '', c.notes ?? ''
+        c.source ?? '', c.notes ?? ''
       ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
     })
     const csv = [headers.join(','), ...rows].join('\n')
@@ -162,14 +122,6 @@ export default function InventoryPage() {
         <h1 className="page-title">Inventory</h1>
         <div className="flex gap-2">
           <button onClick={exportCSV} className="btn-secondary text-xs px-3 py-2">Export CSV</button>
-          <button
-            onClick={compAll}
-            disabled={compingAll}
-            className="btn-secondary text-xs px-3 py-2 disabled:opacity-50"
-            title="Fetch eBay sold comps for all owned cards"
-          >
-            {compingAll ? '⏳ Comping...' : '🔍 Comp All'}
-          </button>
           <Link href="/add" className="btn-primary w-auto px-4 py-2 text-sm">+ Add Card</Link>
         </div>
       </div>
@@ -254,16 +206,6 @@ export default function InventoryPage() {
                       {isSold && card.sale_price && (
                         <span className="text-zinc-400">Sold: <strong className="text-zinc-200">{formatCurrency(card.sale_price)}</strong></span>
                       )}
-                      {!isSold && card.comp_price && (
-                        <span className="text-zinc-400">
-                          Comp: <strong className={card.comp_price > cost ? 'text-emerald-400' : 'text-red-400'}>
-                            {formatCurrency(card.comp_price)}
-                          </strong>
-                          <span className="text-zinc-600 ml-1 text-xs">
-                            ({formatCurrency(card.comp_low ?? card.comp_price)}–{formatCurrency(card.comp_high ?? card.comp_price)}, {card.comp_count} sales)
-                          </span>
-                        </span>
-                      )}
                       {isSold && cardProfit !== null && (
                         <>
                           <span className={cardProfit >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
@@ -278,9 +220,6 @@ export default function InventoryPage() {
                       )}
                       {card.source && <span className="text-zinc-600 text-xs">{card.source}</span>}
                     </div>
-                    {card.comp_date && (
-                      <p className="text-xs text-zinc-600 mt-0.5">Comped {card.comp_date}</p>
-                    )}
                   </div>
 
                   {/* Action buttons */}
@@ -303,16 +242,6 @@ export default function InventoryPage() {
                     {card.status === 'graded' && (
                       <button onClick={() => setSellCard(card)} className="btn-success text-xs px-3 py-1.5">
                         Sell
-                      </button>
-                    )}
-                    {(card.status === 'owned' || card.status === 'graded') && (
-                      <button
-                        onClick={() => compCard(card)}
-                        disabled={compingId === card.id}
-                        className="text-xs text-zinc-500 hover:text-blue-400 px-2 py-1 disabled:opacity-40"
-                        title="Fetch eBay sold comps"
-                      >
-                        {compingId === card.id ? '⏳' : '🔍 Comp'}
                       </button>
                     )}
                     <Link href={`/edit/${card.id}`} className="text-xs text-zinc-500 hover:text-blue-400 px-2 py-1 text-center">

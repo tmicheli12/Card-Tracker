@@ -28,11 +28,6 @@ export interface Card {
   sold_date: string | null
   notes: string | null
   batch_name: string | null
-  comp_price: number | null
-  comp_low: number | null
-  comp_high: number | null
-  comp_count: number | null
-  comp_date: string | null
   created_at: string
   updated_at: string
 }
