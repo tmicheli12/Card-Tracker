@@ -73,7 +73,7 @@ export default function InventoryPage() {
       if (res.ok) loadData()
       else {
         const err = await res.json()
-        alert(`Comp failed: ${err.error}`)
+        alert(`Comp failed: ${err.error}${err.detail ? '\n\n' + err.detail : ''}`)
       }
     } catch {
       alert('Comp request failed — check your connection.')

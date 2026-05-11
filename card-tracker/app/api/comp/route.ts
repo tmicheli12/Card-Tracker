@@ -6,12 +6,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Build the best eBay search term from card data
-function buildSearchTerm(player: string, year: number | null, sport: string): string {
-  // player field already contains full card name (e.g. "2000 Topps Stars Kobe Bryant Walk of Fame")
-  // Use it directly, trimmed to a reasonable length for eBay search
+function buildSearchTerm(player: string): string {
   const term = player.trim()
-  // eBay search works best under ~80 chars
   return term.length > 80 ? term.substring(0, 80) : term
 }
 
@@ -26,38 +22,60 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing cardId or player' }, { status: 400 })
   }
 
-  const searchTerm = buildSearchTerm(player, year, sport)
+  const searchTerm = buildSearchTerm(player)
 
   try {
-    // eBay Finding API — findCompletedItems with SoldItemsOnly filter
-    const params = new URLSearchParams({
-      'OPERATION-NAME': 'findCompletedItems',
-      'SERVICE-VERSION': '1.0.0',
-      'SECURITY-APPNAME': appId,
-      'RESPONSE-DATA-FORMAT': 'JSON',
-      'keywords': searchTerm,
-      'categoryId': '212',            // Sports Trading Cards
-      'itemFilter(0).name': 'SoldItemsOnly',
-      'itemFilter(0).value': 'true',
-      'sortOrder': 'EndTimeSoonest',
-      'paginationInput.entriesPerPage': '15',
+    // Build query string manually — URLSearchParams encodes () which breaks eBay's itemFilter syntax
+    const base = [
+      `OPERATION-NAME=findCompletedItems`,
+      `SERVICE-VERSION=1.0.0`,
+      `SECURITY-APPNAME=${encodeURIComponent(appId)}`,
+      `RESPONSE-DATA-FORMAT=JSON`,
+      `keywords=${encodeURIComponent(searchTerm)}`,
+      `itemFilter(0).name=SoldItemsOnly`,
+      `itemFilter(0).value=true`,
+      `sortOrder=EndTimeSoonest`,
+      `paginationInput.entriesPerPage=15`,
+    ].join('&')
+
+    const url = `https://svcs.ebay.com/services/search/FindingService/v1?${base}`
+
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CardTracker/1.0)',
+        'Accept': 'application/json',
+      },
     })
 
-    const res = await fetch(
-      `https://svcs.ebay.com/services/search/FindingService/v1?${params.toString()}`,
-      { headers: { 'User-Agent': 'CardTracker/1.0' } }
-    )
+    const rawText = await res.text()
 
     if (!res.ok) {
-      return NextResponse.json({ error: `eBay API error: ${res.status}` }, { status: 502 })
+      // Return the eBay error body so we can debug it
+      return NextResponse.json(
+        { error: `eBay API error: ${res.status}`, detail: rawText.substring(0, 500) },
+        { status: 502 }
+      )
     }
 
-    const data = await res.json()
+    let data: any
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      return NextResponse.json({ error: 'eBay returned non-JSON', detail: rawText.substring(0, 300) }, { status: 502 })
+    }
+
     const response = data?.findCompletedItemsResponse?.[0]
+    const ackValue = response?.ack?.[0]
+
+    if (ackValue === 'Failure') {
+      const errMsg = response?.errorMessage?.[0]?.error?.[0]?.message?.[0] ?? 'Unknown eBay error'
+      return NextResponse.json({ error: errMsg }, { status: 502 })
+    }
+
     const items = response?.searchResult?.[0]?.item ?? []
 
     if (items.length === 0) {
-      return NextResponse.json({ error: 'No sold comps found', searchTerm }, { status: 404 })
+      return NextResponse.json({ error: 'No sold comps found on eBay', searchTerm }, { status: 404 })
     }
 
     // Extract sold prices
@@ -69,7 +87,7 @@ export async function POST(req: NextRequest) {
       .filter((p: number | null): p is number => p !== null && p > 0)
 
     if (prices.length === 0) {
-      return NextResponse.json({ error: 'Could not parse prices', searchTerm }, { status: 404 })
+      return NextResponse.json({ error: 'Could not parse prices from results', searchTerm }, { status: 404 })
     }
 
     const avg = prices.reduce((s, p) => s + p, 0) / prices.length
