@@ -11,13 +11,95 @@ function buildSearchTerm(player: string): string {
   return term.length > 80 ? term.substring(0, 80) : term
 }
 
-export async function POST(req: NextRequest) {
-  const appId = process.env.EBAY_APP_ID
-  if (!appId) {
-    return NextResponse.json({ error: 'EBAY_APP_ID not configured' }, { status: 500 })
+// Extract dollar amounts from HTML — works across different site layouts
+function parsePrices(html: string): number[] {
+  const prices: number[] = []
+
+  // Match patterns like $67.00, $1,234.56, $45
+  const regex = /\$\s*([\d,]+(?:\.\d{1,2})?)/g
+  let match
+
+  while ((match = regex.exec(html)) !== null) {
+    const val = parseFloat(match[1].replace(/,/g, ''))
+    // Filter out obviously wrong values (shipping costs, fees, etc.)
+    if (val >= 1 && val <= 100000) {
+      prices.push(val)
+    }
   }
 
-  const { cardId, player, year, sport } = await req.json()
+  return prices
+}
+
+// Remove duplicates and outliers (keep middle 80%)
+function cleanPrices(prices: number[]): number[] {
+  if (prices.length <= 2) return prices
+  const sorted = [...prices].sort((a, b) => a - b)
+  const cutLow = Math.floor(sorted.length * 0.1)
+  const cutHigh = Math.ceil(sorted.length * 0.9)
+  return sorted.slice(cutLow, cutHigh)
+}
+
+async function fetch130point(searchTerm: string): Promise<number[]> {
+  const url = `https://www.130point.com/sales/?itemTitle=${encodeURIComponent(searchTerm)}`
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Cache-Control': 'no-cache',
+      'Referer': 'https://www.130point.com/',
+    },
+    next: { revalidate: 0 },
+  })
+
+  if (!res.ok) throw new Error(`130point returned ${res.status}`)
+
+  const html = await res.text()
+
+  // 130point shows prices inside table cells / divs with dollar amounts
+  // Focus on the sales results section — look for prices near "sold" context
+  // Remove script/style blocks first to avoid false matches
+  const cleaned = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+
+  return parsePrices(cleaned)
+}
+
+async function fetchEbayHtml(searchTerm: string): Promise<number[]> {
+  const url = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(searchTerm)}&LH_Sold=1&LH_Complete=1&_sop=13`
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+    next: { revalidate: 0 },
+  })
+
+  if (!res.ok) throw new Error(`eBay returned ${res.status}`)
+
+  const html = await res.text()
+
+  // eBay sold prices appear in spans with class s-item__price after "Sold" text
+  // Extract prices near sold indicators
+  const cleaned = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+
+  // eBay wraps sold prices in specific patterns — look for spans near sold items
+  const soldSection = cleaned.match(/s-item__price[\s\S]{0,200}/g) ?? []
+  const pricesFromSold = soldSection.flatMap(chunk => parsePrices(chunk))
+
+  // Fallback to all prices if specific extraction fails
+  return pricesFromSold.length >= 3 ? pricesFromSold : parsePrices(cleaned)
+}
+
+export async function POST(req: NextRequest) {
+  const { cardId, player } = await req.json()
   if (!cardId || !player) {
     return NextResponse.json({ error: 'Missing cardId or player' }, { status: 400 })
   }
@@ -25,69 +107,33 @@ export async function POST(req: NextRequest) {
   const searchTerm = buildSearchTerm(player)
 
   try {
-    // Build query string manually — URLSearchParams encodes () which breaks eBay's itemFilter syntax
-    const base = [
-      `OPERATION-NAME=findCompletedItems`,
-      `SERVICE-VERSION=1.0.0`,
-      `SECURITY-APPNAME=${encodeURIComponent(appId)}`,
-      `RESPONSE-DATA-FORMAT=JSON`,
-      `keywords=${encodeURIComponent(searchTerm)}`,
-      `itemFilter(0).name=SoldItemsOnly`,
-      `itemFilter(0).value=true`,
-      `sortOrder=EndTimeSoonest`,
-      `paginationInput.entriesPerPage=15`,
-    ].join('&')
+    let rawPrices: number[] = []
+    let source = ''
 
-    const url = `https://svcs.ebay.com/services/search/FindingService/v1?${base}`
-
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; CardTracker/1.0)',
-        'Accept': 'application/json',
-      },
-    })
-
-    const rawText = await res.text()
-
-    if (!res.ok) {
-      // Return the eBay error body so we can debug it
-      return NextResponse.json(
-        { error: `eBay API error: ${res.status}`, detail: rawText.substring(0, 500) },
-        { status: 502 }
-      )
-    }
-
-    let data: any
+    // Try 130point first, fall back to eBay HTML
     try {
-      data = JSON.parse(rawText)
-    } catch {
-      return NextResponse.json({ error: 'eBay returned non-JSON', detail: rawText.substring(0, 300) }, { status: 502 })
+      rawPrices = await fetch130point(searchTerm)
+      source = '130point'
+    } catch (err: any) {
+      console.log('130point failed:', err.message, '— trying eBay HTML')
+      try {
+        rawPrices = await fetchEbayHtml(searchTerm)
+        source = 'eBay'
+      } catch (ebayErr: any) {
+        return NextResponse.json(
+          { error: 'Both 130point and eBay are unreachable', detail: ebayErr.message },
+          { status: 502 }
+        )
+      }
     }
 
-    const response = data?.findCompletedItemsResponse?.[0]
-    const ackValue = response?.ack?.[0]
+    const prices = cleanPrices(rawPrices)
 
-    if (ackValue === 'Failure') {
-      const errMsg = response?.errorMessage?.[0]?.error?.[0]?.message?.[0] ?? 'Unknown eBay error'
-      return NextResponse.json({ error: errMsg }, { status: 502 })
-    }
-
-    const items = response?.searchResult?.[0]?.item ?? []
-
-    if (items.length === 0) {
-      return NextResponse.json({ error: 'No sold comps found on eBay', searchTerm }, { status: 404 })
-    }
-
-    // Extract sold prices
-    const prices: number[] = items
-      .map((item: any) => {
-        const priceStr = item?.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__']
-        return priceStr ? parseFloat(priceStr) : null
-      })
-      .filter((p: number | null): p is number => p !== null && p > 0)
-
-    if (prices.length === 0) {
-      return NextResponse.json({ error: 'Could not parse prices from results', searchTerm }, { status: 404 })
+    if (prices.length < 2) {
+      return NextResponse.json(
+        { error: `No sold comps found for "${searchTerm}"`, searchTerm },
+        { status: 404 }
+      )
     }
 
     const avg = prices.reduce((s, p) => s + p, 0) / prices.length
@@ -95,7 +141,6 @@ export async function POST(req: NextRequest) {
     const high = Math.max(...prices)
     const today = new Date().toISOString().split('T')[0]
 
-    // Save to Supabase
     const { error: dbError } = await supabase
       .from('cards')
       .update({
@@ -118,6 +163,7 @@ export async function POST(req: NextRequest) {
       comp_count: prices.length,
       comp_date: today,
       searchTerm,
+      source,
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
