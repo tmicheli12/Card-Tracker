@@ -64,18 +64,30 @@ export default function SnipePage() {
   async function addSearch() {
     const t = newTerm.trim()
     if (!t) return
-    await supabase.from('snipe_searches').insert({ search_term: t, enabled: true })
+    const { error } = await supabase.from('snipe_searches').insert({ search_term: t, enabled: true })
+    if (error) {
+      alert(`Add failed: ${error.message}\n\nIf this says "row-level security", run in Supabase SQL Editor:\nALTER TABLE snipe_searches DISABLE ROW LEVEL SECURITY;`)
+      return
+    }
     setNewTerm('')
     loadSearches()
   }
 
   async function removeSearch(id: string) {
-    await supabase.from('snipe_searches').delete().eq('id', id)
+    const { error } = await supabase.from('snipe_searches').delete().eq('id', id)
+    if (error) {
+      alert(`Remove failed: ${error.message}`)
+      return
+    }
     loadSearches()
   }
 
   async function toggleSearch(id: string, enabled: boolean) {
-    await supabase.from('snipe_searches').update({ enabled: !enabled }).eq('id', id)
+    const { error } = await supabase.from('snipe_searches').update({ enabled: !enabled }).eq('id', id)
+    if (error) {
+      alert(`Toggle failed: ${error.message}`)
+      return
+    }
     loadSearches()
   }
 
