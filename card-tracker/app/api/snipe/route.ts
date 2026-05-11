@@ -78,7 +78,7 @@ async function searchEbay(token: string, term: string, startISO: string, endISO:
   url.searchParams.set('q', term)
   url.searchParams.set('filter', filter)
   url.searchParams.set('sort', 'endingSoonest')
-  url.searchParams.set('limit', '50')
+  url.searchParams.set('limit', '200') // eBay max per page
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -121,20 +121,31 @@ export async function GET(_req: NextRequest) {
       searches.map(async (s) => {
         try {
           const data = await searchEbay(token, s.search_term, startISO, endISO)
-          return { term: s.search_term, items: data.itemSummaries ?? [], error: null as string | null }
+          return {
+            term: s.search_term,
+            items: data.itemSummaries ?? [],
+            total: data.total ?? 0,
+            error: null as string | null,
+          }
         } catch (err: any) {
-          return { term: s.search_term, items: [] as any[], error: err.message as string }
+          return { term: s.search_term, items: [] as any[], total: 0, error: err.message as string }
         }
       })
     )
 
     // Combine, dedupe by itemId, filter to items with ≥1 bid
     const itemMap = new Map<string, any>()
+    let totalRawItems = 0
+    let totalBidFiltered = 0
     for (const r of results) {
+      totalRawItems += r.items.length
       for (const item of r.items) {
         if (!item.itemId) continue
         const bidCount = item.bidCount ?? 0
-        if (bidCount < 1) continue
+        if (bidCount < 1) {
+          totalBidFiltered++
+          continue
+        }
 
         if (!itemMap.has(item.itemId)) {
           itemMap.set(item.itemId, {
@@ -162,6 +173,12 @@ export async function GET(_req: NextRequest) {
       items,
       window: { start: startISO, end: endISO, dateLabel },
       errors: results.filter((r) => r.error).map((r) => ({ term: r.term, error: r.error })),
+      diagnostics: {
+        totalRawItems,
+        totalBidFiltered,
+        finalCount: items.length,
+        perSearch: results.map((r) => ({ term: r.term, raw: r.items.length, total: r.total })),
+      },
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

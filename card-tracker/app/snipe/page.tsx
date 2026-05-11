@@ -31,6 +31,8 @@ export default function SnipePage() {
   const [windowInfo, setWindowInfo] = useState<{ start: string; end: string; dateLabel: string } | null>(null)
   const [errors, setErrors] = useState<{ term: string; error: string }[]>([])
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [diagnostics, setDiagnostics] = useState<any | null>(null)
+  const [showDiag, setShowDiag] = useState(false)
 
   const loadSearches = useCallback(async () => {
     const { data } = await supabase.from('snipe_searches').select('*').order('search_term')
@@ -53,6 +55,7 @@ export default function SnipePage() {
         setItems(data.items ?? [])
         setWindowInfo(data.window ?? null)
         setErrors(data.errors ?? [])
+        setDiagnostics(data.diagnostics ?? null)
         setLastRefresh(new Date())
       }
     } catch (err: any) {
@@ -185,6 +188,28 @@ export default function SnipePage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Diagnostics (collapsed by default) */}
+      {diagnostics && (
+        <div className="card mb-3 text-xs">
+          <button onClick={() => setShowDiag((s) => !s)} className="flex items-center justify-between w-full">
+            <span className="text-zinc-500">
+              {diagnostics.totalRawItems} raw → {diagnostics.totalBidFiltered} no-bid filtered → {diagnostics.finalCount} after dedup
+            </span>
+            <span className="text-zinc-600">{showDiag ? '▲' : '▼'} per-search</span>
+          </button>
+          {showDiag && (
+            <div className="mt-2 space-y-1 border-t border-zinc-800 pt-2">
+              {diagnostics.perSearch.map((s: any) => (
+                <div key={s.term} className="flex justify-between text-zinc-500">
+                  <span className="truncate">{s.term}</span>
+                  <span className="text-zinc-400 shrink-0 ml-2">{s.raw} of {s.total} eBay match</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
