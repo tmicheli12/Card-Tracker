@@ -36,21 +36,16 @@ async function getEbayToken(): Promise<string> {
 }
 
 // ── CT window calculation ──────────────────────────────────────────────────
-// Returns the next upcoming 12 AM – 6 AM CT window in UTC.
+// Always returns TOMORROW MORNING's 12 AM – 6 AM CT window in UTC.
+// "Tomorrow" = current CT calendar date + 1 day. Rolls forward each day.
 function getCTWindowInUTC(): { startUTC: Date; endUTC: Date; dateLabel: string } {
   const now = new Date()
   const ctDateStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Chicago' }).format(now)
-  const ctHour = parseInt(
-    new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(now)
-  )
 
-  // If past 6 AM CT, look at tomorrow's window. Else today's (we're still inside it).
-  let targetDateStr = ctDateStr
-  if (ctHour >= 6) {
-    const d = new Date(ctDateStr + 'T12:00:00Z')
-    d.setUTCDate(d.getUTCDate() + 1)
-    targetDateStr = d.toISOString().split('T')[0]
-  }
+  // Always look ahead to tomorrow's date in CT
+  const d = new Date(ctDateStr + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + 1)
+  const targetDateStr = d.toISOString().split('T')[0]
 
   // Determine the UTC offset for CT at target date (handles DST)
   const probe = new Date(targetDateStr + 'T12:00:00Z')
