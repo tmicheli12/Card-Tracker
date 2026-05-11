@@ -9,6 +9,7 @@ const links = [
   { href: '/inventory',  label: 'Inventory', icon: '📦' },
   { href: '/grading',    label: 'Grading',   icon: '🏆' },
   { href: '/analytics',  label: 'Analytics', icon: '📈' },
+  { href: '/snipe',      label: 'Snipe',     icon: '🎯' },
 ]
 
 export default function Navigation({ layout }: { layout: 'mobile' | 'horizontal' }) {
