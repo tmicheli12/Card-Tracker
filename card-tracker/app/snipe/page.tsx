@@ -45,7 +45,7 @@ export default function SnipePage() {
     setRefreshing(true)
     setErrorMsg(null)
     try {
-      const res = await fetch('/api/snipe')
+      const res = await fetch('/api/snipe', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) {
         setErrorMsg(data.error ?? 'Unknown error')
