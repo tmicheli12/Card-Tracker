@@ -53,33 +53,37 @@ export default function AnalyticsPage() {
   }
 
   // ── Monthly P&L ───────────────────────────────────────────────────────────
+  // Key by sortable ISO month (yyyy-MM), keep display label separate
   const monthlyData = soldCards.reduce<Record<string, number>>((acc, card) => {
     if (!card.sold_date) return acc
-    const month = format(startOfMonth(parseISO(card.sold_date)), 'MMM yy')
-    acc[month] = (acc[month] ?? 0) + profit(card, psaCost)
+    const key = format(startOfMonth(parseISO(card.sold_date)), 'yyyy-MM')
+    acc[key] = (acc[key] ?? 0) + profit(card, psaCost)
     return acc
   }, {})
   const monthlyChart = Object.entries(monthlyData)
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, value]) => ({ month, profit: parseFloat(value.toFixed(2)) }))
+    .map(([key, value]) => ({
+      month: format(parseISO(key + '-01'), 'MMM yy'),
+      profit: parseFloat(value.toFixed(2)),
+    }))
 
   // ── Monthly Cash Flow (money out vs money in) ─────────────────────────────
   const cashFlowMap: Record<string, { out: number; in: number }> = {}
   cards.forEach(c => {
-    const month = format(startOfMonth(new Date(c.purchase_date)), 'MMM yy')
-    if (!cashFlowMap[month]) cashFlowMap[month] = { out: 0, in: 0 }
-    cashFlowMap[month].out += c.purchase_price + (c.purchase_fees ?? 0)
+    const key = format(startOfMonth(new Date(c.purchase_date)), 'yyyy-MM')
+    if (!cashFlowMap[key]) cashFlowMap[key] = { out: 0, in: 0 }
+    cashFlowMap[key].out += c.purchase_price + (c.purchase_fees ?? 0)
   })
   soldCards.forEach(c => {
     if (!c.sold_date) return
-    const month = format(startOfMonth(parseISO(c.sold_date)), 'MMM yy')
-    if (!cashFlowMap[month]) cashFlowMap[month] = { out: 0, in: 0 }
-    cashFlowMap[month].in += netSale(c)
+    const key = format(startOfMonth(parseISO(c.sold_date)), 'yyyy-MM')
+    if (!cashFlowMap[key]) cashFlowMap[key] = { out: 0, in: 0 }
+    cashFlowMap[key].in += netSale(c)
   })
   const cashFlowChart = Object.entries(cashFlowMap)
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, d]) => ({
-      month,
+    .map(([key, d]) => ({
+      month: format(parseISO(key + '-01'), 'MMM yy'),
       spent: parseFloat(d.out.toFixed(2)),
       received: parseFloat(d.in.toFixed(2)),
     }))
