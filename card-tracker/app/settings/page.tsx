@@ -63,6 +63,18 @@ export default function SettingsPage() {
         <p className="text-sm text-zinc-500">Card Tracker — built for tracking card flips and PSA grading submissions.</p>
         <p className="text-sm text-zinc-600">All data is stored securely in your Supabase database.</p>
       </div>
+
+      <div className="mt-6 card space-y-3">
+        <h2 className="font-semibold text-zinc-200">Account</h2>
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut()
+          }}
+          className="btn-secondary text-sm border-red-900 text-red-400 hover:bg-red-900/30"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   )
 }

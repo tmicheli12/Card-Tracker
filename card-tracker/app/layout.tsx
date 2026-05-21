@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Script from 'next/script'
-import Navigation from '@/components/Navigation'
+import AppShell from '@/components/AppShell'
 
 export const metadata: Metadata = {
   title: 'Card Tracker',
@@ -22,30 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
       </head>
       <body className="bg-zinc-950 text-zinc-100">
-        <div className="min-h-screen flex flex-col">
-          {/* Desktop header */}
-          <header className="hidden md:flex items-center justify-between px-6 py-3 bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm" style={{background: 'linear-gradient(135deg, #2563eb, #7c3aed)'}}>
-                TM
-              </div>
-              <span className="text-lg font-bold text-zinc-100 tracking-tight">Card Tracker</span>
-            </div>
-            <Navigation layout="horizontal" />
-          </header>
-
-          {/* Page content */}
-          <main className="flex-1 pb-20 md:pb-8">
-            <div className="max-w-5xl mx-auto px-4 py-5 md:px-6 md:py-6">
-              {children}
-            </div>
-          </main>
-
-          {/* Mobile bottom nav */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur border-t border-zinc-800 z-50 safe-area-inset-bottom">
-            <Navigation layout="mobile" />
-          </nav>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   )
