@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/card'
-import { totalCost, profit, roi, formatCurrency, formatPercent, statusLabel, statusColor } from '@/lib/calculations'
+import { totalCost, purchaseCost, profit, roi, formatCurrency, formatPercent, statusLabel, statusColor } from '@/lib/calculations'
 import StatCard from '@/components/StatCard'
 import Link from 'next/link'
 import { format, parseISO, differenceInDays } from 'date-fns'
@@ -37,7 +37,7 @@ export default function DashboardPage() {
   const owned       = cards.filter(c => c.status === 'owned')
 
   // All-time financials
-  const collectionValue  = activeCards.reduce((s, c) => s + totalCost(c, psaCost), 0)
+  const collectionValue  = activeCards.reduce((s, c) => s + purchaseCost(c), 0) // excludes PSA fee (use totalCost to revert)
   const capitalAtPSA     = atPSA.reduce((s, c) => s + totalCost(c, psaCost), 0)
   const totalProfit      = soldCards.reduce((s, c) => s + profit(c, psaCost), 0)
   const totalEverSpent   = cards.reduce((s, c) => s + c.purchase_price + (c.purchase_fees ?? 0), 0)

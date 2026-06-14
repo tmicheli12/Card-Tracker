@@ -5,6 +5,13 @@ export function totalCost(card: Card, psaCost: number): number {
   return card.strategy === 'grade' ? base + psaCost : base
 }
 
+// Purchase cost only — excludes PSA grading fee.
+// Used for collection value so grading fees don't inflate what you "own".
+// To revert: replace purchaseCost(c) with totalCost(c, psaCost) in app/page.tsx line 40.
+export function purchaseCost(card: Card): number {
+  return card.purchase_price + (card.purchase_fees ?? 0)
+}
+
 export function netSale(card: Card): number {
   if (!card.sale_price) return 0
   return card.sale_price - (card.sale_fees ?? 0) - (card.sale_shipping ?? 0)
