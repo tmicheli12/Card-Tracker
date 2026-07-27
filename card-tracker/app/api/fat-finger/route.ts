@@ -35,7 +35,14 @@ interface Misspelling {
   correctWord: string   // the correct spelling, e.g. "mahomes" (lowercased)
 }
 
+// Terms excluded from typo-scanning only (they still work on the Snipe tab).
+// Their misspellings collide with real words/names — e.g. "slammy" → "sammy"
+// matches Sammy Sosa listings.
+const FAT_FINGER_EXCLUDE = new Set(['slammy'])
+
 function generateMisspellings(term: string): Misspelling[] {
+  if (FAT_FINGER_EXCLUDE.has(term.trim().toLowerCase())) return []
+
   const words = term.trim().split(/\s+/)
 
   // Target the longest word — usually the player's last name
