@@ -15,6 +15,7 @@ interface SnipeItem {
   matchedTerms?: string[]
   originalTerm?: string
   misspelling?: string
+  typoWord?: string
 }
 
 interface SnipeSearch {
@@ -242,7 +243,7 @@ function FatFingerTab() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [meta, setMeta] = useState<{ totalMisspellings: number; totalRaw: number; bidFiltered: number; finalCount: number } | null>(null)
+  const [meta, setMeta] = useState<{ totalMisspellings: number; totalRaw: number; spellFiltered: number; bidFiltered: number; finalCount: number } | null>(null)
 
   async function refresh() {
     setRefreshing(true)
@@ -254,7 +255,7 @@ function FatFingerTab() {
         setErrorMsg(data.error ?? 'Unknown error')
       } else {
         setItems(data.items ?? [])
-        setMeta({ totalMisspellings: data.totalMisspellings, totalRaw: data.totalRaw, bidFiltered: data.bidFiltered, finalCount: data.finalCount })
+        setMeta({ totalMisspellings: data.totalMisspellings, totalRaw: data.totalRaw, spellFiltered: data.spellFiltered, bidFiltered: data.bidFiltered, finalCount: data.finalCount })
         setLastRefresh(new Date())
       }
     } catch (err: any) {
@@ -282,14 +283,14 @@ function FatFingerTab() {
           🔤 Searches eBay for <strong className="text-violet-400">misspelled listings</strong> of your search terms
         </p>
         <p className="text-xs text-zinc-500 mt-1">
-          Generates transpositions, dropped letters, doubled letters, and vowel swaps
+          Generates transpositions, dropped letters, doubled letters, and vowel swaps · every result is verified to actually contain the typo in its title
         </p>
         <p className="text-xs text-zinc-500 mt-1">
           Filtered to: <span className="text-zinc-400">≥ 1 bid</span> · <span className="text-zinc-400">≥ $50</span> · <span className="text-zinc-400">ending within 72 hours</span> · sorted by ending soonest
         </p>
         {lastRefresh && meta && (
           <p className="text-xs text-zinc-600 mt-1">
-            Last scan {lastRefresh.toLocaleTimeString()} · {meta.totalMisspellings} variants searched · {meta.totalRaw} raw → {meta.bidFiltered} no-bid filtered → {meta.finalCount} unique
+            Last scan {lastRefresh.toLocaleTimeString()} · {meta.totalMisspellings} variants · {meta.totalRaw} raw → {meta.spellFiltered} correctly-spelled dropped → {meta.bidFiltered} no-bid dropped → {meta.finalCount} unique
           </p>
         )}
       </div>

@@ -29,38 +29,38 @@ async function getEbayToken(): Promise<string> {
 // ── Misspelling generator ──────────────────────────────────────────────────
 // Generates likely fat-finger and typo variants for a search term.
 // Focuses on the longest word (usually the last name) to keep results relevant.
-function generateMisspellings(term: string): string[] {
-  const results = new Set<string>()
+interface Misspelling {
+  phrase: string        // full search phrase with the typo, e.g. "Parick mahomes"
+  typoWord: string      // just the misspelled word, e.g. "parick" (lowercased)
+  correctWord: string   // the correct spelling, e.g. "mahomes" (lowercased)
+}
+
+function generateMisspellings(term: string): Misspelling[] {
   const words = term.trim().split(/\s+/)
 
   // Target the longest word — usually the player's last name
   const targetIdx = words.reduce((best, w, i) => w.length > words[best].length ? i : best, 0)
   const word = words[targetIdx]
 
-  if (word.length < 4) return []
+  if (word.length < 5) return []
 
-  function variant(misspelled: string): string {
-    const w = [...words]
-    w[targetIdx] = misspelled
-    return w.join(' ')
-  }
+  const typos = new Set<string>()
 
   // 1. Transpose adjacent letter pairs (most common fat-finger)
   for (let i = 0; i < word.length - 1; i++) {
     const v = word.slice(0, i) + word[i + 1] + word[i] + word.slice(i + 2)
-    if (v !== word) results.add(variant(v))
+    if (v !== word) typos.add(v)
   }
 
   // 2. Drop one letter
-  for (let i = 1; i < word.length - 1; i++) { // skip first/last — too short usually
+  for (let i = 1; i < word.length - 1; i++) {
     const v = word.slice(0, i) + word.slice(i + 1)
-    if (v.length >= 3) results.add(variant(v))
+    if (v.length >= 4) typos.add(v)
   }
 
   // 3. Double a letter (e.g., "Mahomes" → "Mahoomes")
   for (let i = 1; i < word.length - 1; i++) {
-    const v = word.slice(0, i) + word[i] + word[i] + word.slice(i + 1)
-    results.add(variant(v))
+    typos.add(word.slice(0, i) + word[i] + word[i] + word.slice(i + 1))
   }
 
   // 4. Common vowel swaps (a↔e, i↔e, o↔u)
@@ -68,14 +68,18 @@ function generateMisspellings(term: string): string[] {
   for (let i = 0; i < word.length; i++) {
     const swap = vowelSwaps[word[i].toLowerCase()]
     if (swap) {
-      const v = word.slice(0, i) + (word[i] === word[i].toUpperCase() ? swap.toUpperCase() : swap) + word.slice(i + 1)
-      results.add(variant(v))
+      typos.add(word.slice(0, i) + (word[i] === word[i].toUpperCase() ? swap.toUpperCase() : swap) + word.slice(i + 1))
     }
   }
 
-  // Exclude the original term and cap total
-  results.delete(term)
-  return Array.from(results).slice(0, 12)
+  typos.delete(word)
+
+  const correctWord = word.toLowerCase()
+  return Array.from(typos).slice(0, 12).map(typo => {
+    const w = [...words]
+    w[targetIdx] = typo
+    return { phrase: w.join(' '), typoWord: typo.toLowerCase(), correctWord }
+  })
 }
 
 // ── eBay search (≥ $50, auctions only) ─────────────────────────────────────
@@ -125,36 +129,47 @@ export async function GET(_req: NextRequest) {
     const token = await getEbayToken()
 
     // Build all (term, misspelling) pairs
-    const pairs: { original: string; misspelling: string }[] = []
+    const pairs: { original: string; m: Misspelling }[] = []
     for (const s of searches) {
-      const variants = generateMisspellings(s.search_term)
-      for (const v of variants) {
-        pairs.push({ original: s.search_term, misspelling: v })
+      for (const m of generateMisspellings(s.search_term)) {
+        pairs.push({ original: s.search_term, m })
       }
     }
 
     // Search eBay for all misspellings in parallel
     const results = await Promise.all(
-      pairs.map(async ({ original, misspelling }) => {
+      pairs.map(async ({ original, m }) => {
         try {
-          const data = await searchEbay(token, misspelling, startISO, endISO)
-          return { original, misspelling, items: data.itemSummaries ?? [], error: null as string | null }
+          const data = await searchEbay(token, m.phrase, startISO, endISO)
+          return { original, m, items: data.itemSummaries ?? [], error: null as string | null }
         } catch (err: any) {
-          return { original, misspelling, items: [] as any[], error: err.message as string }
+          return { original, m, items: [] as any[], error: err.message as string }
         }
       })
     )
 
-    // Dedupe by itemId, collect matched misspellings per item
+    // Dedupe by itemId, filter to titles that ACTUALLY contain the typo.
+    // eBay auto-corrects search queries, so most results spell the name
+    // correctly — those are useless to us and must be discarded.
     const itemMap = new Map<string, any>()
     let totalRaw = 0
     let bidFiltered = 0
+    let spellFiltered = 0
     for (const r of results) {
       totalRaw += r.items.length
       for (const item of r.items) {
         if (!item.itemId) continue
+
+        const title = (item.title ?? '').toLowerCase()
+        // Keep only if the title contains the typo AND not the correct spelling
+        if (!title.includes(r.m.typoWord) || title.includes(r.m.correctWord)) {
+          spellFiltered++
+          continue
+        }
+
         const bidCount = item.bidCount ?? 0
         if (bidCount < 1) { bidFiltered++; continue }
+
         if (!itemMap.has(item.itemId)) {
           itemMap.set(item.itemId, {
             itemId: item.itemId,
@@ -166,7 +181,8 @@ export async function GET(_req: NextRequest) {
             url: item.itemWebUrl,
             imageUrl: item.image?.imageUrl ?? item.thumbnailImages?.[0]?.imageUrl,
             originalTerm: r.original,
-            misspelling: r.misspelling,
+            misspelling: r.m.phrase,
+            typoWord: r.m.typoWord,
           })
         }
       }
@@ -177,13 +193,14 @@ export async function GET(_req: NextRequest) {
       (a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
     )
 
-    const errors = results.filter(r => r.error).map(r => ({ misspelling: r.misspelling, error: r.error }))
+    const errors = results.filter(r => r.error).map(r => ({ misspelling: r.m.phrase, error: r.error }))
 
     return NextResponse.json({
       items,
       window: { start: startISO, end: endISO },
       totalMisspellings: pairs.length,
       totalRaw,
+      spellFiltered,
       bidFiltered,
       finalCount: items.length,
       errors,
