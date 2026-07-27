@@ -78,10 +78,12 @@ function generateMisspellings(term: string): string[] {
   return Array.from(results).slice(0, 12)
 }
 
-// ── eBay search (no price floor, no bid requirement) ───────────────────────
+// ── eBay search (≥ $50, auctions only) ─────────────────────────────────────
 async function searchEbay(token: string, term: string, startISO: string, endISO: string) {
   const filter = [
     'buyingOptions:{AUCTION}',
+    'price:[50..]',
+    'priceCurrency:USD',
     `itemEndDate:[${startISO}..${endISO}]`,
   ].join(',')
 
@@ -89,7 +91,7 @@ async function searchEbay(token: string, term: string, startISO: string, endISO:
   url.searchParams.set('q', term)
   url.searchParams.set('filter', filter)
   url.searchParams.set('sort', 'endingSoonest')
-  url.searchParams.set('limit', '50')
+  url.searchParams.set('limit', '200')
 
   const res = await fetch(url.toString(), {
     headers: { 'Authorization': `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
@@ -114,9 +116,9 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ items: [], message: 'No search terms configured' })
     }
 
-    // Window: now → next 24 hours
+    // Window: now → next 72 hours
     const startUTC = new Date()
-    const endUTC = new Date(startUTC.getTime() + 24 * 60 * 60 * 1000)
+    const endUTC = new Date(startUTC.getTime() + 72 * 60 * 60 * 1000)
     const startISO = startUTC.toISOString()
     const endISO = endUTC.toISOString()
 
@@ -146,17 +148,20 @@ export async function GET(_req: NextRequest) {
     // Dedupe by itemId, collect matched misspellings per item
     const itemMap = new Map<string, any>()
     let totalRaw = 0
+    let bidFiltered = 0
     for (const r of results) {
       totalRaw += r.items.length
       for (const item of r.items) {
         if (!item.itemId) continue
+        const bidCount = item.bidCount ?? 0
+        if (bidCount < 1) { bidFiltered++; continue }
         if (!itemMap.has(item.itemId)) {
           itemMap.set(item.itemId, {
             itemId: item.itemId,
             title: item.title,
             currentPrice: item.currentBidPrice?.value ?? item.price?.value,
             currency: item.currentBidPrice?.currency ?? item.price?.currency ?? 'USD',
-            bidCount: item.bidCount ?? 0,
+            bidCount,
             endDate: item.itemEndDate,
             url: item.itemWebUrl,
             imageUrl: item.image?.imageUrl ?? item.thumbnailImages?.[0]?.imageUrl,
@@ -179,6 +184,7 @@ export async function GET(_req: NextRequest) {
       window: { start: startISO, end: endISO },
       totalMisspellings: pairs.length,
       totalRaw,
+      bidFiltered,
       finalCount: items.length,
       errors,
     })
